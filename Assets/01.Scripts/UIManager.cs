@@ -89,7 +89,21 @@ public class UIManager : MonoBehaviour
 
             if (_resultScoreText != null)
             {
-                _resultScoreText.gameObject.SetActive(false);
+                _resultScoreText.gameObject.SetActive(true);
+                _resultScoreText.text = $"최종 점수: {finalScore}";
+            }
+        }
+        else if (reason == GameOverReason.CookieBaseCollision)
+        {
+            if (_resultMessageText != null)
+            {
+                _resultMessageText.text = "조작을 실수했군요!";
+            }
+
+            if (_resultScoreText != null)
+            {
+                _resultScoreText.gameObject.SetActive(true);
+                _resultScoreText.text = $"최종 점수: {finalScore}";
             }
         }
         else

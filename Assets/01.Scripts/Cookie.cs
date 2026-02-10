@@ -2,24 +2,14 @@ using UnityEngine;
 
 public class Cookie : Block
 {
-    private bool _isFirstCookie;
     private bool _isBase;
     private int _creamCountBelow;
-    private bool _isSettled;
-    private float _settleCheckDelay = 0.5f;
-    private float _spawnTime;
+    private bool _isOreoCompleted;
 
     public bool IsBase => _isBase;
 
-    protected override void Awake()
-    {
-        base.Awake();
-        _spawnTime = Time.time;
-    }
-
     public void Initialize(bool isFirstCookie, int creamCountBelow)
     {
-        _isFirstCookie = isFirstCookie;
         _creamCountBelow = creamCountBelow;
     }
 
@@ -27,43 +17,55 @@ public class Cookie : Block
     {
         _isBase = true;
         Rigidbody.bodyType = RigidbodyType2D.Static;
-        _isSettled = true;
     }
 
-    private void Update()
+    private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (_isBase || _isSettled)
+        if (_isBase || _isOreoCompleted)
         {
             return;
         }
 
-        if (Time.time - _spawnTime < _settleCheckDelay)
+        // 쿠키끼리 충돌하면 바로 오레오 완성
+        var otherCookie = collision.gameObject.GetComponent<Cookie>();
+        if (otherCookie != null && !otherCookie._isOreoCompleted)
         {
+            _isOreoCompleted = true;
+            otherCookie._isOreoCompleted = true;
+
+            CompleteOreo(otherCookie);
             return;
         }
 
-        CheckSettled();
+        // 크림 위에 착지한 경우
+        var cream = collision.gameObject.GetComponent<Cream>();
+        if (cream != null && _creamCountBelow > 0)
+        {
+            _isOreoCompleted = true;
+
+            var spawner = FindAnyObjectByType<BlockSpawner>();
+            if (spawner != null)
+            {
+                var bottomCookie = spawner.FindBottomCookieFor(this);
+                if (bottomCookie != null)
+                {
+                    bottomCookie._isOreoCompleted = true;
+                    CompleteOreo(bottomCookie);
+                }
+            }
+        }
     }
 
-    private void CheckSettled()
-    {
-        if (Rigidbody.linearVelocity.magnitude > 0.1f)
-        {
-            return;
-        }
-
-        _isSettled = true;
-        CompleteOreo();
-    }
-
-    private void CompleteOreo()
+    private void CompleteOreo(Cookie bottomCookie)
     {
         GameEvents.RaiseOreoCompleted(_creamCountBelow);
 
         var spawner = FindAnyObjectByType<BlockSpawner>();
-        if (spawner != null)
+        if (spawner == null)
         {
-            spawner.RemoveOreoBlocks(this, _creamCountBelow);
+            return;
         }
+
+        spawner.RemoveOreoBetween(this, bottomCookie);
     }
 }

@@ -11,6 +11,9 @@ public class BlockSpawner : MonoBehaviour
     [SerializeField] private float _spawnHeightOffset = 2f;
     [SerializeField] private float _firstCookieYPosition = -3f;
 
+    [Header("Cream Spawn Range")]
+    [SerializeField] private float _creamSpawnRange = 1f;
+
     private InputHandler _inputHandler;
     private readonly List<Block> _stackedBlocks = new();
     private Block _topBlock;
@@ -117,12 +120,8 @@ public class BlockSpawner : MonoBehaviour
             return Vector2.zero;
         }
 
-        float halfWidth = _topBlock.HalfWidth;
         float blockX = _topBlock.transform.position.x;
-        float minX = blockX - halfWidth;
-        float maxX = blockX + halfWidth;
-
-        float spawnX = Random.Range(minX, maxX);
+        float spawnX = Random.Range(blockX - _creamSpawnRange, blockX + _creamSpawnRange);
         float spawnY = _topBlock.TopY + _spawnHeightOffset;
 
         return new Vector2(spawnX, spawnY);
@@ -132,12 +131,6 @@ public class BlockSpawner : MonoBehaviour
     {
         _stackedBlocks.Add(block);
         _topBlock = block;
-    }
-
-    public void RemoveBlock(Block block)
-    {
-        _stackedBlocks.Remove(block);
-        UpdateTopBlock();
     }
 
     private void UpdateTopBlock()
@@ -151,18 +144,41 @@ public class BlockSpawner : MonoBehaviour
         _topBlock = _stackedBlocks[^1];
     }
 
-    public void RemoveOreoBlocks(Cookie topCookie, int creamCount)
+    public Cookie FindBottomCookieFor(Cookie topCookie)
     {
-        int removeCount = creamCount + 1;
-        int startIndex = _stackedBlocks.Count - removeCount;
-
-        if (startIndex < 0)
+        int topIndex = _stackedBlocks.IndexOf(topCookie);
+        if (topIndex < 0)
         {
-            startIndex = 0;
+            return null;
         }
 
-        var blocksToRemove = _stackedBlocks.GetRange(startIndex, _stackedBlocks.Count - startIndex);
-        _stackedBlocks.RemoveRange(startIndex, _stackedBlocks.Count - startIndex);
+        for (int i = topIndex - 1; i >= 0; i--)
+        {
+            if (_stackedBlocks[i] is Cookie cookie)
+            {
+                return cookie;
+            }
+        }
+
+        return null;
+    }
+
+    public void RemoveOreoBetween(Cookie topCookie, Cookie bottomCookie)
+    {
+        int topIndex = _stackedBlocks.IndexOf(topCookie);
+        int bottomIndex = _stackedBlocks.IndexOf(bottomCookie);
+
+        if (topIndex < 0 || bottomIndex < 0)
+        {
+            return;
+        }
+
+        int startIndex = Mathf.Min(topIndex, bottomIndex);
+        int endIndex = Mathf.Max(topIndex, bottomIndex);
+        int count = endIndex - startIndex + 1;
+
+        var blocksToRemove = _stackedBlocks.GetRange(startIndex, count);
+        _stackedBlocks.RemoveRange(startIndex, count);
 
         foreach (var block in blocksToRemove)
         {
